@@ -1,16 +1,26 @@
 {
   "name": "styled-log-ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight color logger for Node.js/TypeScript",
   "author": "jankayala",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "homepage": "https://github.com/jankayala/styled-log-ts",
   "keywords": [
+    "log",
     "logger",
+    "logging",
+    "styled-log",
+    "styled-log-ts",
+    "color logger",
     "color",
     "console",
     "ts"
   ],
   "license": "MIT",
+  "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "exports": {
@@ -24,14 +34,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "test": "vitest",
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/node": "25.5.0",
     "@vitest/coverage-v8": "4.1.1",
-    "tsup": "8.5.1",
+    "tsdown": "0.21.5",
     "typescript": "6.0.2",
     "vitest": "4.1.1"
   }
