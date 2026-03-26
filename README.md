@@ -1,4 +1,4 @@
-# styled-log
+# styled-log-ts
 
 A lightweight logger for Node.js/TypeScript that supports:
 
@@ -16,7 +16,7 @@ A lightweight logger for Node.js/TypeScript that supports:
 Install package in your project:
 
 ```bash
-npm install styled-log@latest --save
+npm install styled-log-ts@latest --save
 ```
 
 ---
@@ -26,7 +26,7 @@ npm install styled-log@latest --save
 ### Basic Example
 
 ```ts
-import logger from "styled-log";
+import logger from "styled-log-ts";
 
 logger.info("Hello world");
 logger.success("Operation completed");
@@ -44,7 +44,7 @@ Control which logs are shown by setting a minimum log level.
 ### Example
 
 ```ts
-import logger from "styled-log";
+import logger from "styled-log-ts";
 
 // Only show warn, error
 logger.setLevel("warn");
@@ -70,7 +70,7 @@ debug < info < success < warn < error;
 ## 🎨 Custom Styling
 
 ```ts
-import logger from "styled-log";
+import logger from "styled-log-ts";
 
 logger.log("Custom message", {
   color: red,
