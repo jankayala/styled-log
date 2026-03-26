@@ -1,0 +1,12 @@
+/src
+/tests
+/node_modules
+/coverage
+
+.env
+.DS_Store
+.vscode
+
+tsconfig.json
+vitest.config.ts
+tsup.config.ts

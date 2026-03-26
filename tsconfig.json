@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "src",
+    // Modern output (tsup handles bundling)
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // Types
+    "types": [
+      "node"
+    ],
+    "declaration": true,
+    "declarationMap": true,
+    // DX
+    "sourceMap": true,
+    // Strictness
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // Interop & build safety
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "tests/verify_logger.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
