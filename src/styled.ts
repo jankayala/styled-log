@@ -1,5 +1,4 @@
-export const ANSI_CODES = {
-  // colors
+const COLOR_CODES = {
   black: [30, 39],
   red: [31, 39],
   green: [32, 39],
@@ -18,8 +17,9 @@ export const ANSI_CODES = {
   magentaBright: [95, 39],
   cyanBright: [96, 39],
   white: [97, 39],
+} as const;
 
-  // background colors
+const BG_COLOR_CODES = {
   bgBlack: [40, 49],
   bgRed: [41, 49],
   bgGreen: [42, 49],
@@ -38,8 +38,9 @@ export const ANSI_CODES = {
   bgMagentaBright: [105, 49],
   bgCyanBright: [106, 49],
   bgWhite: [107, 49],
+} as const;
 
-  // modifiers
+const MODIFIER_CODES = {
   bold: [1, 22],
   dim: [2, 22],
   italic: [3, 23],
@@ -50,26 +51,25 @@ export const ANSI_CODES = {
   overline: [53, 55],
 } as const;
 
-export type ColorName = 
-  | "black" | "red" | "green" | "yellow" | "blue" | "magenta" | "cyan" | "lightGrey" | "lightGray" | "grey" | "gray"
-  | "redBright" | "greenBright" | "yellowBright" | "blueBright" | "magentaBright" | "cyanBright" | "white";
+export const ANSI_CODES = {
+  ...COLOR_CODES,
+  ...BG_COLOR_CODES,
+  ...MODIFIER_CODES,
+} as const;
 
-export type BgColorName = 
-  | "bgBlack" | "bgRed" | "bgGreen" | "bgYellow" | "bgBlue" | "bgMagenta" | "bgCyan" | "bgLightGrey" | "bgLightGray"
-  | "bgGrey" | "bgGray" | "bgRedBright" | "bgGreenBright" | "bgYellowBright" | "bgBlueBright" | "bgMagentaBright"
-  | "bgCyanBright" | "bgWhite";
+export type ColorName = keyof typeof COLOR_CODES;
+export type BgColorName = keyof typeof BG_COLOR_CODES;
+export type ModifierName = keyof typeof MODIFIER_CODES;
+export type StyleName = keyof typeof ANSI_CODES;
 
-export type ModifierName = 
-  | "bold" | "dim" | "italic" | "underline" | "inverse" | "hidden" | "strikethrough" | "overline";
+const COLOR_NAMES = new Set<string>(Object.keys(COLOR_CODES));
+const BG_COLOR_NAMES = new Set<string>(Object.keys(BG_COLOR_CODES));
 
 export interface StyleOptions {
   color?: ColorName;
   bgColor?: BgColorName;
   modifiers?: ModifierName | ModifierName[];
 }
-
-
-export type StyleName = keyof typeof ANSI_CODES;
 
 type Styled = {
   (text: string): string;
@@ -79,10 +79,25 @@ type Styled = {
 
 function createStyled(styles: StyleName[] = []): Styled {
   const fn = ((text: string) => {
+    const colors = styles.filter((s) => COLOR_NAMES.has(s));
+    const bgColors = styles.filter((s) => BG_COLOR_NAMES.has(s));
+
+    if (colors.length > 1) {
+      console.warn(
+        `[styled] Multiple foreground colors detected: [${colors.join(", ")}]. ` +
+          `Only "${colors[0]}" will be applied.`,
+      );
+    }
+    if (bgColors.length > 1) {
+      console.warn(
+        `[styled] Multiple background colors detected: [${bgColors.join(", ")}]. ` +
+          `Only "${bgColors[0]}" will be applied.`,
+      );
+    }
+
     return styles.reduce((acc, style) => {
       const codes = ANSI_CODES[style];
       if (!codes) return acc;
-
       const [open, close] = codes;
       return `\x1b[${open}m${acc}\x1b[${close}m`;
     }, text);

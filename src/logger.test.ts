@@ -8,10 +8,8 @@ describe("Logger", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    // mock console.log
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    // mock time
     vi.useFakeTimers();
     vi.setSystemTime(new Date(FIXED_DATE));
   });
@@ -33,27 +31,29 @@ describe("Logger", () => {
       customLogger.error("should log");
 
       expect(logSpy).toHaveBeenCalledTimes(2);
-      // Padded to 9 and bolded
       const expectedWarnPrefix = `\x1b[33m\x1b[1m[WARN]\x1b[22m\x1b[39m`;
       const expectedErrorPrefix = `\x1b[31m\x1b[1m[ERROR]\x1b[22m\x1b[39m`;
       expect(logSpy).toHaveBeenNthCalledWith(
         1,
-        `${expectedWarnPrefix} \x1b[2m${FIXED_DATE}\x1b[22m should log`,
+        `${expectedWarnPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+        `should log`,
       );
       expect(logSpy).toHaveBeenNthCalledWith(
         2,
-        `${expectedErrorPrefix} \x1b[2m${FIXED_DATE}\x1b[22m should log`,
+        `${expectedErrorPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+        `should log`,
       );
     });
   });
 
   it("logs debug with correct color", () => {
-    logger.debug("dbg");
+    logger.debug("debug");
 
     const expectedPrefix = `\x1b[35m\x1b[1m[DEBUG]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m dbg`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `debug`,
     );
   });
 
@@ -63,7 +63,8 @@ describe("Logger", () => {
     const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m hello`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `hello`,
     );
   });
 
@@ -73,7 +74,8 @@ describe("Logger", () => {
     const expectedPrefix = `\x1b[32m\x1b[1m[SUCCESS]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m ok`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `ok`,
     );
   });
 
@@ -83,7 +85,8 @@ describe("Logger", () => {
     const expectedPrefix = `\x1b[33m\x1b[1m[WARN]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m warn msg`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `warn msg`,
     );
   });
 
@@ -93,7 +96,8 @@ describe("Logger", () => {
     const expectedPrefix = `\x1b[31m\x1b[1m[ERROR]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m fail`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `fail`,
     );
   });
 
@@ -103,7 +107,8 @@ describe("Logger", () => {
     const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m ${JSON.stringify({ foo: "bar" }, null, 2)}`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `${JSON.stringify({ foo: "bar" }, null, 2)}`,
     );
   });
 
@@ -157,7 +162,8 @@ describe("Logger", () => {
     const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
 
     expect(logSpy).toHaveBeenCalledWith(
-      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m multi`,
+      `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+      `multi`,
     );
   });
 
@@ -196,8 +202,7 @@ describe("Logger", () => {
 
   it("accesses non-function properties on logger proxy", () => {
     expect(logger.setLevel).toBeDefined();
-    // currentLevel is private, but we can access it via any for coverage
-    expect((logger as any).currentLevel).toBe(LogLevel.Debug);
+    expect(logger.getLevel()).toBe(LogLevel.Debug);
   });
 
   it("handles unknown prop in chained logger proxy by returning undefined (line 119 and line 133)", () => {

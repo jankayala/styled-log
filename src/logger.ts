@@ -1,11 +1,16 @@
-import { styled, type StyleName, ANSI_CODES, type StyleOptions } from "./styled";
+import {
+  styled,
+  type StyleName,
+  ANSI_CODES,
+  type StyleOptions,
+} from "@/styled";
 
 export enum LogLevel {
   Debug = "debug",
   Info = "info",
   Success = "success",
   Warn = "warn",
-  Error = "error"
+  Error = "error",
 }
 
 const levelPriority = {
@@ -34,6 +39,10 @@ export class Logger {
     this.currentLevel = level;
   }
 
+  getLevel(): LogLevel {
+    return this.currentLevel;
+  }
+
   private shouldLog(level: LogLevel): boolean {
     return levelPriority[level] >= levelPriority[this.currentLevel];
   }
@@ -42,12 +51,18 @@ export class Logger {
     if (typeof obj !== "object" || obj === null) return false;
     const keys = Object.keys(obj);
     if (keys.length === 0) return false;
-    return keys.every(key => ["color", "bgColor", "modifiers"].includes(key));
+    return keys.every((key) => ["color", "bgColor", "modifiers"].includes(key));
   }
 
-  private levelColors: Record<LogLevel, StyleName> = { debug: "magenta", info: "blue", success: "green", warn: "yellow", error: "red", };
+  private levelColors: Record<LogLevel, StyleName> = {
+    debug: "magenta",
+    info: "blue",
+    success: "green",
+    warn: "yellow",
+    error: "red",
+  };
 
-  private leveledLog(level: LogLevel, msg: unknown) {
+  private leveledLog(level: LogLevel, ...args: unknown[]) {
     if (!this.shouldLog(level)) return;
 
     const color = this.levelColors[level];
@@ -56,18 +71,21 @@ export class Logger {
     const prefix = styled.bold[color](`[${label}]`);
     const time = styled.dim(timestamp());
 
-    console.log(`${prefix} ${time} ${format(msg)}`);
+    console.log(`${prefix} ${time}`, ...args.map(format));
   }
 
   log(...args: unknown[]) {
-    const hasOptions = args.length > 1 && this.isStyleOptions(args[args.length - 1]);
+    const hasOptions =
+      args.length > 1 && this.isStyleOptions(args[args.length - 1]);
     if (hasOptions) {
       const options = args.pop() as StyleOptions;
       let s = styled;
       if (options.color) s = (s as any)[options.color];
       if (options.bgColor) s = (s as any)[options.bgColor];
       if (options.modifiers) {
-        const mods = Array.isArray(options.modifiers) ? options.modifiers : [options.modifiers];
+        const mods = Array.isArray(options.modifiers)
+          ? options.modifiers
+          : [options.modifiers];
         for (const mod of mods) {
           s = (s as any)[mod];
         }
@@ -78,26 +96,25 @@ export class Logger {
     }
   }
 
-  debug(msg: unknown) {
-    this.leveledLog(LogLevel.Debug, msg);
+  debug(...args: unknown[]) {
+    this.leveledLog(LogLevel.Debug, ...args);
   }
 
-  info(msg: unknown) {
-    this.leveledLog(LogLevel.Info, msg);
+  info(...args: unknown[]) {
+    this.leveledLog(LogLevel.Info, ...args);
   }
 
-  success(msg: unknown) {
-    this.leveledLog(LogLevel.Success, msg);
+  success(...args: unknown[]) {
+    this.leveledLog(LogLevel.Success, ...args);
   }
 
-  warn(msg: unknown) {
-    this.leveledLog(LogLevel.Warn, msg);
+  warn(...args: unknown[]) {
+    this.leveledLog(LogLevel.Warn, ...args);
   }
 
-  error(msg: unknown) {
-    this.leveledLog(LogLevel.Error, msg);
+  error(...args: unknown[]) {
+    this.leveledLog(LogLevel.Error, ...args);
   }
-
 }
 
 const baseLogger = new Logger();
