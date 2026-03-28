@@ -31,7 +31,10 @@
   },
   "types": "dist/types/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsdown",
@@ -39,6 +42,7 @@
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@types/node": "25.5.0",
     "@vitest/coverage-v8": "4.1.2",
     "tsdown": "0.21.6",
