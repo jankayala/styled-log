@@ -68,19 +68,124 @@ const BG_COLOR_NAMES = new Set<string>(Object.keys(BG_COLOR_CODES));
 export interface StyleOptions {
   color?: ColorName;
   bgColor?: BgColorName;
+  rgb?: [number, number, number];
+  bgRgb?: [number, number, number];
+  hex?: string;
+  bgHex?: string;
   modifiers?: ModifierName | ModifierName[];
 }
 
+type RgbStyle = {
+  kind: "rgb" | "bgRgb";
+  values: [number, number, number];
+};
+
+type AppliedStyle = StyleName | RgbStyle;
+
 type Styled = {
   (text: string): string;
+  rgb: (red: number, green: number, blue: number) => Styled;
+  bgRgb: (red: number, green: number, blue: number) => Styled;
+  hex: (value: string) => Styled;
+  bgHex: (value: string) => Styled;
 } & {
   [K in StyleName]: Styled;
 };
 
-function createStyled(styles: StyleName[] = []): Styled {
+function normalizeRgbValue(value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new TypeError("RGB values must be finite numbers.");
+  }
+
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function createRgbStyle(
+  kind: RgbStyle["kind"],
+  red: number,
+  green: number,
+  blue: number,
+): RgbStyle {
+  return {
+    kind,
+    values: [
+      normalizeRgbValue(red),
+      normalizeRgbValue(green),
+      normalizeRgbValue(blue),
+    ],
+  };
+}
+
+function parseHexColor(value: string): [number, number, number] {
+  const normalized = value.trim().replace(/^#/, "");
+
+  if (!/^[\da-f]{3}([\da-f]{3})?$/i.test(normalized)) {
+    throw new TypeError(
+      'Hex colors must be valid 3 or 6 digit hex values, e.g. "#abc" or "#aabbcc".',
+    );
+  }
+
+  const fullHex =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : normalized;
+
+  return [
+    Number.parseInt(fullHex.slice(0, 2), 16),
+    Number.parseInt(fullHex.slice(2, 4), 16),
+    Number.parseInt(fullHex.slice(4, 6), 16),
+  ];
+}
+
+function createHexStyle(kind: RgbStyle["kind"], value: string): RgbStyle {
+  return createRgbStyle(kind, ...parseHexColor(value));
+}
+
+function formatStyleName(style: AppliedStyle): string {
+  if (typeof style === "string") return style;
+
+  const [red, green, blue] = style.values;
+  return `${style.kind}(${red}, ${green}, ${blue})`;
+}
+
+function isForegroundStyle(style: AppliedStyle): boolean {
+  return typeof style === "string"
+    ? COLOR_NAMES.has(style)
+    : style.kind === "rgb";
+}
+
+function isBackgroundStyle(style: AppliedStyle): boolean {
+  return typeof style === "string"
+    ? BG_COLOR_NAMES.has(style)
+    : style.kind === "bgRgb";
+}
+
+function applyStyle(text: string, style: AppliedStyle): string {
+  if (typeof style === "string") {
+    const codes = ANSI_CODES[style];
+    if (!codes) return text;
+
+    const [open, close] = codes;
+    return `\x1b[${open}m${text}\x1b[${close}m`;
+  }
+
+  const [red, green, blue] = style.values;
+  const open =
+    style.kind === "rgb"
+      ? `38;2;${red};${green};${blue}`
+      : `48;2;${red};${green};${blue}`;
+  const close = style.kind === "rgb" ? 39 : 49;
+
+  return `\x1b[${open}m${text}\x1b[${close}m`;
+}
+
+function createStyled(styles: AppliedStyle[] = []): Styled {
   const fn = ((text: string) => {
-    const colors = styles.filter((s) => COLOR_NAMES.has(s));
-    const bgColors = styles.filter((s) => BG_COLOR_NAMES.has(s));
+    const colors = styles.filter(isForegroundStyle).map(formatStyleName);
+    const bgColors = styles.filter(isBackgroundStyle).map(formatStyleName);
 
     if (colors.length > 1) {
       console.warn(
@@ -95,20 +200,36 @@ function createStyled(styles: StyleName[] = []): Styled {
       );
     }
 
-    return styles.reduce((acc, style) => {
-      const codes = ANSI_CODES[style];
-      if (!codes) return acc;
-      const [open, close] = codes;
-      return `\x1b[${open}m${acc}\x1b[${close}m`;
-    }, text);
+    return styles.reduce((acc, style) => applyStyle(acc, style), text);
   }) as Styled;
 
   return new Proxy(fn, {
-    get(_, prop: string) {
-      if (prop in ANSI_CODES) {
+    get(_, prop: string | symbol) {
+      if (prop === "rgb") {
+        return (red: number, green: number, blue: number) =>
+          createStyled([...styles, createRgbStyle("rgb", red, green, blue)]);
+      }
+
+      if (prop === "bgRgb") {
+        return (red: number, green: number, blue: number) =>
+          createStyled([...styles, createRgbStyle("bgRgb", red, green, blue)]);
+      }
+
+      if (prop === "hex") {
+        return (value: string) =>
+          createStyled([...styles, createHexStyle("rgb", value)]);
+      }
+
+      if (prop === "bgHex") {
+        return (value: string) =>
+          createStyled([...styles, createHexStyle("bgRgb", value)]);
+      }
+
+      if (typeof prop === "string" && prop in ANSI_CODES) {
         return createStyled([...styles, prop as StyleName]);
       }
-      throw new Error(`Unknown style: ${prop}`);
+
+      throw new Error(`Unknown style: ${String(prop)}`);
     },
   });
 }

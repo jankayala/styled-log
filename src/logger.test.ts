@@ -187,6 +187,38 @@ describe("Logger", () => {
       expect(calledWith).toContain("\x1b[31m"); // red
       expect(calledWith).toContain("\x1b[40m"); // bgBlack
     });
+
+    it("supports rgb text styling that logs automatically", () => {
+      logger.rgb(50, 50, 50)("rgb colored text");
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "\x1b[38;2;50;50;50mrgb colored text\x1b[39m",
+      );
+    });
+
+    it("supports rgb background styling that logs automatically", () => {
+      logger.bgRgb(50, 50, 50)("rgb colored background");
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "\x1b[48;2;50;50;50mrgb colored background\x1b[49m",
+      );
+    });
+
+    it("supports hex text styling that logs automatically", () => {
+      logger.hex("#336699")("hex colored text");
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "\x1b[38;2;51;102;153mhex colored text\x1b[39m",
+      );
+    });
+
+    it("supports log() with hex style options", () => {
+      logger.log("hex option", { hex: "#102030" });
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "\x1b[38;2;16;32;48mhex option\x1b[39m",
+      );
+    });
   });
 
   it("handles null or non-object options in log()", () => {

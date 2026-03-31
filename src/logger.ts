@@ -51,7 +51,17 @@ export class Logger {
     if (typeof obj !== "object" || obj === null) return false;
     const keys = Object.keys(obj);
     if (keys.length === 0) return false;
-    return keys.every((key) => ["color", "bgColor", "modifiers"].includes(key));
+    return keys.every((key) =>
+      [
+        "color",
+        "bgColor",
+        "rgb",
+        "bgRgb",
+        "hex",
+        "bgHex",
+        "modifiers",
+      ].includes(key),
+    );
   }
 
   private levelColors: Record<LogLevel, StyleName> = {
@@ -82,6 +92,10 @@ export class Logger {
       let s = styled;
       if (options.color) s = (s as any)[options.color];
       if (options.bgColor) s = (s as any)[options.bgColor];
+      if (options.rgb) s = (s as any).rgb(...options.rgb);
+      if (options.bgRgb) s = (s as any).bgRgb(...options.bgRgb);
+      if (options.hex) s = (s as any).hex(options.hex);
+      if (options.bgHex) s = (s as any).bgHex(options.bgHex);
       if (options.modifiers) {
         const mods = Array.isArray(options.modifiers)
           ? options.modifiers
@@ -119,20 +133,26 @@ export class Logger {
 
 const baseLogger = new Logger();
 
-function createLoggerStyled(styles: StyleName[] = []): any {
+function createLoggerStyled(currentStyle: any = styled): any {
   const fn = (text: string) => {
-    let s = styled;
-    for (const style of styles) {
-      s = (s as any)[style];
-    }
-    console.log(s(text));
+    console.log(currentStyle(text));
   };
 
   return new Proxy(fn, {
-    get(_, prop: string) {
-      if (prop in ANSI_CODES) {
-        return createLoggerStyled([...styles, prop as StyleName]);
+    get(_, prop: string | symbol) {
+      if (prop === "rgb" || prop === "bgRgb") {
+        return (red: number, green: number, blue: number) =>
+          createLoggerStyled(currentStyle[prop](red, green, blue));
       }
+
+      if (prop === "hex" || prop === "bgHex") {
+        return (value: string) => createLoggerStyled(currentStyle[prop](value));
+      }
+
+      if (typeof prop === "string" && prop in ANSI_CODES) {
+        return createLoggerStyled(currentStyle[prop]);
+      }
+
       return undefined;
     },
   });
@@ -144,9 +164,21 @@ export const logger = new Proxy(baseLogger, {
       const value = (target as any)[prop];
       return typeof value === "function" ? value.bind(target) : value;
     }
-    if (typeof prop === "string" && prop in ANSI_CODES) {
-      return createLoggerStyled([prop as StyleName]);
+
+    if (prop === "rgb" || prop === "bgRgb") {
+      return (red: number, green: number, blue: number) =>
+        createLoggerStyled((styled as any)[prop](red, green, blue));
     }
+
+    if (prop === "hex" || prop === "bgHex") {
+      return (value: string) =>
+        createLoggerStyled((styled as any)[prop](value));
+    }
+
+    if (typeof prop === "string" && prop in ANSI_CODES) {
+      return createLoggerStyled((styled as any)[prop]);
+    }
+
     return undefined;
   },
 }) as Logger & typeof styled;

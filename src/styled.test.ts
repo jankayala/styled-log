@@ -47,6 +47,23 @@ describe("styled", () => {
       styled.red.blue("Hello");
       expect(consoleWarnSpy).toHaveBeenCalled();
     });
+
+    it("should warn when multiple foreground colors are applied", () => {
+      styled.red.rgb(50, 50, 50)("Hello");
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    it("should apply rgb foreground colors", () => {
+      expect(styled.rgb(50, 50, 50)("Hello")).toBe(
+        "\x1b[38;2;50;50;50mHello\x1b[39m",
+      );
+    });
+
+    it("should apply hex foreground colors", () => {
+      expect(styled.hex("#336699")("Hello")).toBe(
+        "\x1b[38;2;51;102;153mHello\x1b[39m",
+      );
+    });
   });
 
   describe("bgColor application", () => {
@@ -76,6 +93,23 @@ describe("styled", () => {
     it("should warn when multiple background colors are applied", () => {
       styled.bgRed.bgBlue("Hello");
       expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    it("should warn when multiple background colors are applied", () => {
+      styled.bgRed.bgRgb(10, 20, 30)("Hello");
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    it("should apply rgb background colors", () => {
+      expect(styled.bgRgb(10, 20, 30)("Hello")).toBe(
+        "\x1b[48;2;10;20;30mHello\x1b[49m",
+      );
+    });
+
+    it("should apply hex background colors", () => {
+      expect(styled.bgHex("#102030")("Hello")).toBe(
+        "\x1b[48;2;16;32;48mHello\x1b[49m",
+      );
     });
   });
 
