@@ -219,6 +219,30 @@ describe("Logger", () => {
         "\x1b[38;2;16;32;48mhex option\x1b[39m",
       );
     });
+
+    it("supports log() with rgb, bgRgb, and bgHex style options", () => {
+      logger.log("rich styles", {
+        rgb: [1, 2, 3],
+        bgRgb: [4, 5, 6],
+        bgHex: "#070809",
+      });
+
+      const calledWith = logSpy.mock.calls[0][0];
+      expect(calledWith).toContain("rich styles");
+      expect(calledWith).toContain("\x1b[38;2;1;2;3m");
+      expect(calledWith).toContain("\x1b[48;2;4;5;6m");
+      expect(calledWith).toContain("\x1b[48;2;7;8;9m");
+    });
+
+    it("supports chained rgb and bgHex after existing styles", () => {
+      logger.bold.rgb(1, 2, 3).bgHex("#040506")("chained styled text");
+
+      const calledWith = logSpy.mock.calls[0][0];
+      expect(calledWith).toContain("chained styled text");
+      expect(calledWith).toContain("\x1b[1m");
+      expect(calledWith).toContain("\x1b[38;2;1;2;3m");
+      expect(calledWith).toContain("\x1b[48;2;4;5;6m");
+    });
   });
 
   it("handles null or non-object options in log()", () => {
@@ -235,6 +259,7 @@ describe("Logger", () => {
   it("accesses non-function properties on logger proxy", () => {
     expect(logger.setLevel).toBeDefined();
     expect(logger.getLevel()).toBe(LogLevel.Debug);
+    expect((logger as any).currentLevel).toBe(LogLevel.Debug);
   });
 
   it("handles unknown prop in chained logger proxy by returning undefined (line 119 and line 133)", () => {

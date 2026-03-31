@@ -4,6 +4,7 @@ import {
   type ColorName,
   type BgColorName,
   type ModifierName,
+  ANSI_CODES,
   COLOR_CODES,
   BG_COLOR_CODES,
   MODIFIER_CODES,
@@ -62,6 +63,21 @@ describe("styled", () => {
     it("should apply hex foreground colors", () => {
       expect(styled.hex("#336699")("Hello")).toBe(
         "\x1b[38;2;51;102;153mHello\x1b[39m",
+      );
+    });
+
+    it("should expand shorthand hex foreground colors", () => {
+      expect(styled.hex("#abc")("Hello")).toBe(
+        "\x1b[38;2;170;187;204mHello\x1b[39m",
+      );
+    });
+
+    it("should reject invalid rgb and hex inputs", () => {
+      expect(() => styled.rgb(Number.POSITIVE_INFINITY, 0, 0)).toThrow(
+        "RGB values must be finite numbers.",
+      );
+      expect(() => styled.hex("#xyz")).toThrow(
+        'Hex colors must be valid 3 or 6 digit hex values, e.g. "#abc" or "#aabbcc".',
       );
     });
   });
@@ -136,5 +152,26 @@ describe("styled", () => {
       styled.bold.underline("Hello");
       expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("styled proxy additional coverage", () => {
+  it("returns the original text when a style mapping is missing", () => {
+    const originalRed = (ANSI_CODES as any).red;
+    (ANSI_CODES as any).red = undefined;
+
+    try {
+      expect(styled.red("Hello")).toBe("Hello");
+    } finally {
+      (ANSI_CODES as any).red = originalRed;
+    }
+  });
+
+  it("throws error for unknown styles", () => {
+    expect(() => (styled as any).unknown).toThrow("Unknown style: unknown");
+  });
+
+  it("handles Symbol props in styled proxy (branch coverage)", () => {
+    expect(() => (styled as any)[Symbol("test")]).toThrow();
   });
 });
