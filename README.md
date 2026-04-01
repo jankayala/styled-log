@@ -35,6 +35,22 @@ logger.error("Something went wrong");
 logger.debug("Debug info");
 ```
 
+### Creating Custom Logger Instances
+
+You can create logger instances with custom settings, including control over timestamp output:
+
+```ts
+import { Logger } from "styled-log-ts";
+
+// Logger without timestamps (default)
+const logger1 = new Logger();
+logger1.info("No timestamp"); // [INFO] No timestamp
+
+// Logger with timestamps
+const logger2 = new Logger(true);
+logger2.info("With timestamp"); // [INFO] 2026-01-01T12:30:45.123Z With timestamp
+```
+
 ### CommonJS
 
 ```js
@@ -90,6 +106,16 @@ logger.log("Custom message", {
 ---
 
 ## 🧩 API
+
+### Logger Constructor
+
+```ts
+new Logger(showTime?: boolean);
+```
+
+| Parameter  | Type      | Default | Description                  |
+| ---------- | --------- | ------- | ---------------------------- |
+| `showTime` | `boolean` | `false` | Include ISO timestamp prefix |
 
 ### Logger Methods
 

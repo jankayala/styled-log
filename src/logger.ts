@@ -34,6 +34,11 @@ function timestamp(): string {
 
 export class Logger {
   private currentLevel: LogLevel = LogLevel.Debug;
+  private showTime: boolean;
+
+  constructor(showTime: boolean = false) {
+    this.showTime = showTime;
+  }
 
   setLevel(level: LogLevel) {
     this.currentLevel = level;
@@ -79,9 +84,12 @@ export class Logger {
     const label = level.toUpperCase();
 
     const prefix = styled.bold[color](`[${label}]`);
-    const time = styled.dim(timestamp());
+    const time = this.showTime ? styled.dim(timestamp()) : "";
 
-    console.log(`${prefix} ${time}`, ...args.map(format));
+    console.log(
+      `${prefix}${this.showTime ? " " + time : ""}`,
+      ...args.map(format),
+    );
   }
 
   log(...args: unknown[]) {
@@ -131,7 +139,7 @@ export class Logger {
   }
 }
 
-const baseLogger = new Logger();
+const baseLogger = new Logger(true);
 
 function createLoggerStyled(currentStyle: any = styled): any {
   const fn = (text: string) => {

@@ -276,6 +276,44 @@ describe("Logger", () => {
     expect((logger as any)._anotherNonExistent).toBeUndefined();
     expect((logger as any)[Symbol("test")]).toBeUndefined();
   });
+
+  describe("showTime constructor parameter", () => {
+    it("creates logger without timestamps by default", () => {
+      const noTimeLogger = new Logger();
+      noTimeLogger.info("test");
+
+      const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
+
+      expect(logSpy).toHaveBeenCalledWith(expectedPrefix, "test");
+    });
+
+    it("creates logger with timestamps when showTime=true", () => {
+      const withTimeLogger = new Logger(true);
+      withTimeLogger.info("test");
+
+      const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
+
+      expect(logSpy).toHaveBeenCalledWith(
+        `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+        "test",
+      );
+    });
+
+    it("respects showTime setting for all log levels", () => {
+      const noTimeLogger = new Logger(false);
+
+      noTimeLogger.warn("warning");
+      noTimeLogger.error("error");
+
+      expect(logSpy).toHaveBeenCalledTimes(2);
+
+      const expectedWarnPrefix = `\x1b[33m\x1b[1m[WARN]\x1b[22m\x1b[39m`;
+      const expectedErrorPrefix = `\x1b[31m\x1b[1m[ERROR]\x1b[22m\x1b[39m`;
+
+      expect(logSpy).toHaveBeenNthCalledWith(1, expectedWarnPrefix, "warning");
+      expect(logSpy).toHaveBeenNthCalledWith(2, expectedErrorPrefix, "error");
+    });
+  });
 });
 
 describe("styled proxy additional coverage", () => {
