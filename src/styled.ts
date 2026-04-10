@@ -121,6 +121,11 @@ type RgbStyle = {
 
 type AppliedStyle = StyleName | RgbStyle;
 
+type StyleAnalysis = {
+  foregrounds: string[];
+  backgrounds: string[];
+};
+
 type Styled = {
   (text: string): string;
   rgb: (red: number, green: number, blue: number) => Styled;
@@ -221,21 +226,34 @@ function applyStyle(text: string, style: AppliedStyle): string {
   return `\x1b[${open}m${text}\x1b[${close}m`;
 }
 
-function createStyled(styles: AppliedStyle[] = []): Styled {
-  const fn = ((text: string) => {
-    const colors = styles.filter(isForegroundStyle).map(formatStyleName);
-    const bgColors = styles.filter(isBackgroundStyle).map(formatStyleName);
+function analyzeStyles(styles: AppliedStyle[]): StyleAnalysis {
+  const foregrounds: string[] = [];
+  const backgrounds: string[] = [];
 
-    if (colors.length > 1) {
+  for (const style of styles) {
+    const formatted = formatStyleName(style);
+    if (isForegroundStyle(style)) foregrounds.push(formatted);
+    if (isBackgroundStyle(style)) backgrounds.push(formatted);
+  }
+
+  return { foregrounds, backgrounds };
+}
+
+function createStyled(
+  styles: AppliedStyle[] = [],
+  analysis: StyleAnalysis = analyzeStyles(styles),
+): Styled {
+  const fn = ((text: string) => {
+    if (analysis.foregrounds.length > 1) {
       console.warn(
-        `[styled] Multiple foreground colors detected: [${colors.join(", ")}]. ` +
-          `Only "${colors[0]}" will be applied.`,
+        `[styled] Multiple foreground colors detected: [${analysis.foregrounds.join(", ")}]. ` +
+          `Only "${analysis.foregrounds[0]}" will be applied.`,
       );
     }
-    if (bgColors.length > 1) {
+    if (analysis.backgrounds.length > 1) {
       console.warn(
-        `[styled] Multiple background colors detected: [${bgColors.join(", ")}]. ` +
-          `Only "${bgColors[0]}" will be applied.`,
+        `[styled] Multiple background colors detected: [${analysis.backgrounds.join(", ")}]. ` +
+          `Only "${analysis.backgrounds[0]}" will be applied.`,
       );
     }
 

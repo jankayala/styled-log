@@ -25,6 +25,8 @@ npm install styled-log-ts@latest --save
 
 ### Basic Example
 
+`logger` is a ready-to-use singleton with timestamps enabled by default.
+
 ```ts
 import { logger } from "styled-log-ts";
 
@@ -37,16 +39,16 @@ logger.debug("Debug info");
 
 ### Creating Custom Logger Instances
 
-You can create logger instances with custom settings, including control over timestamp output:
+You can create logger instances with custom settings, including explicit control over timestamp output:
 
 ```ts
 import { Logger } from "styled-log-ts";
 
-// Logger without timestamps (default)
-const logger1 = new Logger();
+// Logger without timestamps
+const logger1 = new Logger(false);
 logger1.info("No timestamp"); // [INFO] No timestamp
 
-// Logger with timestamps
+// Logger with timestamps (Logger default is false)
 const logger2 = new Logger(true);
 logger2.info("With timestamp"); // [INFO] 2026-01-01T12:30:45.123Z With timestamp
 ```

@@ -195,6 +195,120 @@ describe("Logger", () => {
       logger.log("msg", {});
       expect(logSpy).toHaveBeenCalledWith("msg", {});
     });
+
+    it("formats circular objects without throwing", () => {
+      const circular: Record<string, unknown> = { name: "root" };
+      circular.self = circular;
+
+      expect(() => logger.info(circular)).not.toThrow();
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[INFO]"),
+        expect.stringContaining("[Circular]"),
+      );
+    });
+
+    it("formats BigInt values in objects", () => {
+      logger.info({ value: 10n });
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[INFO]"),
+        expect.stringContaining('"10n"'),
+      );
+    });
+
+    it("formats primitive BigInt values", () => {
+      logger.info(99n);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[INFO]"),
+        "99n",
+      );
+    });
+
+    it("formats Error values and falls back when stack is missing", () => {
+      const err = new Error("boom");
+      delete err.stack;
+
+      logger.error(err);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[ERROR]"),
+        "Error: boom",
+      );
+    });
+
+    it("serializes nested Error objects", () => {
+      logger.info({ err: new Error("nested") });
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[INFO]"),
+        expect.stringContaining('"name": "Error"'),
+      );
+    });
+
+    it("falls back to inspect() when JSON serialization throws", () => {
+      const tricky = {
+        toJSON() {
+          throw new Error("serialize failed");
+        },
+      };
+
+      expect(() => logger.info(tricky)).not.toThrow();
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[INFO]"),
+        expect.stringContaining("toJSON"),
+      );
+    });
+
+    it("throws a clear error for invalid rgb style options", () => {
+      expect(() =>
+        logger.log("bad rgb", { rgb: [1, Number.POSITIVE_INFINITY, 3] as any }),
+      ).toThrow("`rgb` must be a tuple with 3 finite numbers.");
+    });
+
+    it("throws a clear error for invalid bgRgb style options", () => {
+      expect(() =>
+        logger.log("bad bg rgb", {
+          bgRgb: [1, Number.POSITIVE_INFINITY, 3] as any,
+        }),
+      ).toThrow("`bgRgb` must be a tuple with 3 finite numbers.");
+    });
+
+    it("throws a clear error for unknown color names", () => {
+      expect(() => logger.log("bad color", { color: "nope" as any })).toThrow(
+        "Unknown color: nope",
+      );
+    });
+
+    it("throws a clear error for unknown background color names", () => {
+      expect(() =>
+        logger.log("bad bg color", { bgColor: "bgNope" as any }),
+      ).toThrow("Unknown background color: bgNope");
+    });
+
+    it("throws a clear error for invalid hex style options", () => {
+      expect(() => logger.log("bad hex", { hex: "#xyz" as any })).toThrow(
+        "`hex` must be a valid 3 or 6 digit hex value.",
+      );
+    });
+
+    it("throws a clear error for invalid bgHex style options", () => {
+      expect(() => logger.log("bad bg hex", { bgHex: "#xyz" as any })).toThrow(
+        "`bgHex` must be a valid 3 or 6 digit hex value.",
+      );
+    });
+
+    it("throws a clear error for empty modifiers arrays", () => {
+      expect(() =>
+        logger.log("bad empty modifiers", { modifiers: [] as any }),
+      ).toThrow("`modifiers` must contain at least one modifier.");
+    });
+
+    it("throws a clear error for invalid modifier names", () => {
+      expect(() =>
+        logger.log("bad mod", { modifiers: ["bold", "nope"] as any }),
+      ).toThrow("Unknown modifier: nope");
+    });
   });
 
   describe("styling", () => {
