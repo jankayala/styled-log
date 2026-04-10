@@ -18,6 +18,14 @@ export enum LogLevel {
   Error = "error",
 }
 
+export type LogFormat = "pretty" | "json";
+
+export type LoggerOptions = {
+  showTime?: boolean;
+  format?: LogFormat;
+  logLevel?: LogLevel;
+};
+
 const levelPriority: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
@@ -67,6 +75,59 @@ function format(message: unknown): string {
   return String(message);
 }
 
+function serializeError(error: Error): {
+  name: string;
+  message: string;
+  stack?: string;
+} {
+  const serialized = {
+    name: error.name,
+    message: error.message,
+  };
+
+  if (error.stack !== undefined) {
+    return {
+      ...serialized,
+      stack: error.stack,
+    };
+  }
+
+  return serialized;
+}
+
+function toSerializable(value: unknown): unknown {
+  if (value instanceof Error) {
+    return serializeError(value);
+  }
+
+  if (typeof value === "bigint") {
+    return `${value}n`;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    try {
+      const seen = new WeakSet<object>();
+      return JSON.parse(
+        JSON.stringify(value, (_, current: unknown) => {
+          if (typeof current === "bigint") return `${current}n`;
+          if (current instanceof Error) return serializeError(current);
+
+          if (typeof current === "object" && current !== null) {
+            if (seen.has(current)) return "[Circular]";
+            seen.add(current);
+          }
+
+          return current;
+        }),
+      );
+    } catch {
+      return inspect(value, { depth: 4, colors: false, compact: false });
+    }
+  }
+
+  return value;
+}
+
 function timestamp(): string {
   return new Date().toISOString();
 }
@@ -74,6 +135,7 @@ function timestamp(): string {
 export class Logger {
   private currentLevel: LogLevel = LogLevel.Debug;
   private showTime: boolean;
+  private format: LogFormat;
   private readonly styleOptionKeys = new Set([
     "color",
     "bgColor",
@@ -84,8 +146,12 @@ export class Logger {
     "modifiers",
   ]);
 
-  constructor(showTime: boolean = false) {
-    this.showTime = showTime;
+  constructor();
+  constructor(options: LoggerOptions);
+  constructor(options: LoggerOptions = {}) {
+    this.showTime = options.showTime ?? false;
+    this.format = options.format ?? "pretty";
+    this.currentLevel = options.logLevel ?? LogLevel.Debug;
   }
 
   setLevel(level: LogLevel) {
@@ -171,6 +237,33 @@ export class Logger {
   private leveledLog(level: LogLevel, ...args: unknown[]) {
     if (!this.shouldLog(level)) return;
 
+    const output = level === LogLevel.Error ? console.error : console.log;
+
+    if (this.format === "json") {
+      const serializedArgs = args.map(toSerializable);
+      const firstError = args.find((arg): arg is Error => arg instanceof Error);
+
+      const payload: {
+        level: LogLevel;
+        time: string;
+        message: string;
+        args: unknown[];
+        error?: ReturnType<typeof serializeError>;
+      } = {
+        level,
+        time: timestamp(),
+        message: args.map(format).join(" "),
+        args: serializedArgs,
+      };
+
+      if (firstError) {
+        payload.error = serializeError(firstError);
+      }
+
+      output(JSON.stringify(payload));
+      return;
+    }
+
     const color = this.levelColors[level];
     const label = level.toUpperCase();
 
@@ -180,8 +273,6 @@ export class Logger {
         ? styled.dim(timestamp())
         : timestamp()
       : "";
-
-    const output = level === LogLevel.Error ? console.error : console.log;
 
     output(`${prefix}${this.showTime ? " " + time : ""}`, ...args.map(format));
   }
@@ -235,7 +326,7 @@ export class Logger {
   }
 }
 
-const baseLogger = new Logger(true);
+const baseLogger = new Logger({ showTime: true });
 
 type LoggerStyledCallable = (text: string) => void;
 type LoggerStyledChain = LoggerStyledCallable & typeof styled;

@@ -7,6 +7,7 @@ A lightweight logger for Node.js/TypeScript that supports:
 - 🏷️ Log levels (`debug`, `info`, `success`, `warn`, `error`)
 - ✨ Text styling (bold, underline, italic, and more)
 - 🕒 ISO timestamps
+- 🧱 Structured NDJSON mode (`format: "json"`)
 - 🔇 Log level filtering (e.g. only show `warn` and above)
 - 🧩 Custom formatting via chaining or `StyleOptions`
 
@@ -46,8 +47,13 @@ const logger1 = new Logger();
 logger1.info("No timestamp"); // [INFO] No timestamp
 
 // Logger with timestamps
-const logger2 = new Logger(true);
+const logger2 = new Logger({ showTime: true });
 logger2.info("With timestamp"); // [INFO] 2026-01-01T12:30:45.123Z With timestamp
+
+// JSON / NDJSON mode for production pipelines
+const logger3 = new Logger({ format: "json" });
+logger3.info("service started", { port: 3000 });
+// {"level":"info","time":"2026-01-01T12:30:45.123Z","message":"service started {\n  \"port\": 3000\n}","args":["service started",{"port":3000}]}
 ```
 
 ### CommonJS
@@ -64,12 +70,12 @@ logger.info("Hello from CommonJS");
 
 Colors are controlled automatically using the following priority order:
 
-| Priority | Condition | Result |
-| -------- | --------- | ------ |
-| 1 | `NO_COLOR` env var is set (non-empty) | Colors **disabled** |
-| 2 | `FORCE_COLOR` env var is set (non-empty) | Colors **enabled** |
-| 3 | `process.stdout.isTTY === true` | Colors **enabled** |
-| 4 | default (e.g. pipes, CI without `FORCE_COLOR`) | Colors **disabled** |
+| Priority | Condition                                      | Result              |
+| -------- | ---------------------------------------------- | ------------------- |
+| 1        | `NO_COLOR` env var is set (non-empty)          | Colors **disabled** |
+| 2        | `FORCE_COLOR` env var is set (non-empty)       | Colors **enabled**  |
+| 3        | `process.stdout.isTTY === true`                | Colors **enabled**  |
+| 4        | default (e.g. pipes, CI without `FORCE_COLOR`) | Colors **disabled** |
 
 ```bash
 # Disable colors (plain text output – great for log files)
@@ -177,33 +183,36 @@ import { logger } from "styled-log-ts";
 
 ### `Logger` Constructor
 
-```ts
-new Logger(showTime?: boolean)
+```text
+new Logger()
+new Logger(options?: { showTime?: boolean; format?: "pretty" | "json"; logLevel?: LogLevel })
 ```
 
-| Parameter  | Type      | Default | Description                  |
-| ---------- | --------- | ------- | ---------------------------- |
-| `showTime` | `boolean` | `false` | Include ISO timestamp prefix |
+| Parameter  | Type                 | Default    | Description                                         |
+| ---------- | -------------------- | ---------- | --------------------------------------------------- |
+| `showTime` | `boolean`            | `false`    | Include ISO timestamp prefix (pretty mode)          |
+| `format`   | `"pretty" \| "json"` | `"pretty"` | Output mode (`json` emits one NDJSON line per call) |
+| `logLevel` | `LogLevel`           | `"debug"`  | Initiales Mindest-Loglevel                          |
 
 ### Logger Methods
 
-| Method               | Description                        |
-| -------------------- | ---------------------------------- |
-| `setLevel(level)`    | Set minimum log level              |
-| `getLevel()`         | Get current log level              |
-| `debug(...args)`     | Debug message (magenta)            |
-| `info(...args)`      | Informational message (blue)       |
-| `success(...args)`   | Success message (green)            |
-| `warn(...args)`      | Warning message (yellow)           |
-| `error(...args)`     | Error message (red)                |
+| Method               | Description                             |
+| -------------------- | --------------------------------------- |
+| `setLevel(level)`    | Set minimum log level                   |
+| `getLevel()`         | Get current log level                   |
+| `debug(...args)`     | Debug message (magenta)                 |
+| `info(...args)`      | Informational message (blue)            |
+| `success(...args)`   | Success message (green)                 |
+| `warn(...args)`      | Warning message (yellow)                |
+| `error(...args)`     | Error message (red)                     |
 | `log(text, options)` | Custom styled output via `StyleOptions` |
 
 ### Color Utilities
 
-| Export | Signature | Description |
-| ------ | --------- | ----------- |
-| `shouldUseColor` | `() => boolean` | Returns `true` if ANSI colors should be emitted |
-| `stripAnsi` | `(text: string) => string` | Removes all ANSI escape sequences from a string |
+| Export           | Signature                  | Description                                     |
+| ---------------- | -------------------------- | ----------------------------------------------- |
+| `shouldUseColor` | `() => boolean`            | Returns `true` if ANSI colors should be emitted |
+| `stripAnsi`      | `(text: string) => string` | Removes all ANSI escape sequences from a string |
 
 ---
 

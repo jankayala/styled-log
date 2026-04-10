@@ -51,7 +51,7 @@ describe("Logger", () => {
       });
 
       it("creates logger with timestamps when showTime=true", () => {
-        const withTimeLogger = new Logger(true);
+        const withTimeLogger = new Logger({ showTime: true });
         withTimeLogger.info("test");
 
         const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
@@ -64,7 +64,7 @@ describe("Logger", () => {
 
       it("uses plain timestamps when colors are disabled", () => {
         process.env["NO_COLOR"] = "1";
-        const withTimeLogger = new Logger(true);
+        const withTimeLogger = new Logger({ showTime: true });
         withTimeLogger.info("test");
 
         expect(logSpy).toHaveBeenCalledWith(`[INFO] ${FIXED_DATE}`, "test");
@@ -73,7 +73,7 @@ describe("Logger", () => {
       });
 
       it("respects showTime setting for all log levels", () => {
-        const noTimeLogger = new Logger(false);
+        const noTimeLogger = new Logger({ showTime: false });
 
         noTimeLogger.warn("warning");
         noTimeLogger.error("error");
@@ -87,6 +87,81 @@ describe("Logger", () => {
         expect(errorSpy).toHaveBeenCalledTimes(1);
         expect(errorSpy).toHaveBeenCalledWith(expectedErrorPrefix, "error");
       });
+
+      it("supports constructor options object", () => {
+        const withOptionsLogger = new Logger({
+          showTime: true,
+          format: "pretty",
+        });
+        withOptionsLogger.info("test");
+
+        const expectedPrefix = `\x1b[34m\x1b[1m[INFO]\x1b[22m\x1b[39m`;
+        expect(logSpy).toHaveBeenCalledWith(
+          `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
+          "test",
+        );
+      });
+
+      it("applies initial logLevel from constructor options", () => {
+        const withLevelLogger = new Logger({ logLevel: LogLevel.Warn });
+
+        withLevelLogger.info("hidden");
+        withLevelLogger.warn("visible");
+
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining("[WARN]"),
+          "visible",
+        );
+      });
+    });
+  });
+
+  describe("json format", () => {
+    it("emits valid NDJSON lines", () => {
+      const jsonLogger = new Logger({ format: "json" });
+
+      jsonLogger.info("hello", { foo: "bar" });
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const line = logSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(line) as {
+        level: string;
+        time: string;
+        message: string;
+        args: unknown[];
+      };
+
+      expect(parsed.level).toBe("info");
+      expect(parsed.time).toBe(FIXED_DATE);
+      expect(parsed.message).toContain("hello");
+      expect(parsed.args).toEqual(["hello", { foo: "bar" }]);
+    });
+
+    it("includes structured error details", () => {
+      const jsonLogger = new Logger({ format: "json" });
+      const error = new Error("boom");
+
+      jsonLogger.error(error);
+
+      const line = errorSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(line) as {
+        error: { name: string; message: string; stack?: string };
+      };
+
+      expect(parsed.error.name).toBe("Error");
+      expect(parsed.error.message).toBe("boom");
+      expect(parsed.error.stack).toContain("Error: boom");
+    });
+
+    it("routes json errors to stderr and non-errors to stdout", () => {
+      const jsonLogger = new Logger({ format: "json" });
+
+      jsonLogger.warn("warn");
+      jsonLogger.error("error");
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -110,7 +185,7 @@ describe("Logger", () => {
     });
 
     it("routes levels to the expected streams", () => {
-      const customLogger = new Logger(false);
+      const customLogger = new Logger({ showTime: false });
 
       customLogger.debug("d");
       customLogger.info("i");
