@@ -181,10 +181,9 @@ export class Logger {
         : timestamp()
       : "";
 
-    console.log(
-      `${prefix}${this.showTime ? " " + time : ""}`,
-      ...args.map(format),
-    );
+    const output = level === LogLevel.Error ? console.error : console.log;
+
+    output(`${prefix}${this.showTime ? " " + time : ""}`, ...args.map(format));
   }
 
   log(...args: unknown[]) {

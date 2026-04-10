@@ -15,6 +15,7 @@ describe("Logger", () => {
   const FIXED_DATE = "2026-01-01T00:00:00.000Z";
 
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeAll(() => {
     process.env["FORCE_COLOR"] = "1";
@@ -27,6 +28,7 @@ describe("Logger", () => {
 
   beforeEach(() => {
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     vi.useFakeTimers();
     vi.setSystemTime(new Date(FIXED_DATE));
@@ -76,17 +78,14 @@ describe("Logger", () => {
         noTimeLogger.warn("warning");
         noTimeLogger.error("error");
 
-        expect(logSpy).toHaveBeenCalledTimes(2);
-
         const expectedWarnPrefix = `\x1b[33m\x1b[1m[WARN]\x1b[22m\x1b[39m`;
         const expectedErrorPrefix = `\x1b[31m\x1b[1m[ERROR]\x1b[22m\x1b[39m`;
 
-        expect(logSpy).toHaveBeenNthCalledWith(
-          1,
-          expectedWarnPrefix,
-          "warning",
-        );
-        expect(logSpy).toHaveBeenNthCalledWith(2, expectedErrorPrefix, "error");
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(expectedWarnPrefix, "warning");
+
+        expect(errorSpy).toHaveBeenCalledTimes(1);
+        expect(errorSpy).toHaveBeenCalledWith(expectedErrorPrefix, "error");
       });
     });
   });
@@ -102,19 +101,27 @@ describe("Logger", () => {
       customLogger.warn("should log");
       customLogger.error("should log");
 
-      expect(logSpy).toHaveBeenCalledTimes(2);
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
       const expectedWarnPrefix = `\x1b[33m\x1b[1m[WARN]\x1b[22m\x1b[39m`;
       const expectedErrorPrefix = `\x1b[31m\x1b[1m[ERROR]\x1b[22m\x1b[39m`;
-      expect(logSpy).toHaveBeenNthCalledWith(
-        1,
-        expectedWarnPrefix,
-        `should log`,
-      );
-      expect(logSpy).toHaveBeenNthCalledWith(
-        2,
-        expectedErrorPrefix,
-        `should log`,
-      );
+      expect(logSpy).toHaveBeenCalledWith(expectedWarnPrefix, `should log`);
+      expect(errorSpy).toHaveBeenCalledWith(expectedErrorPrefix, `should log`);
+    });
+
+    it("routes levels to the expected streams", () => {
+      const customLogger = new Logger(false);
+
+      customLogger.debug("d");
+      customLogger.info("i");
+      customLogger.success("s");
+      customLogger.warn("w");
+      customLogger.error("e");
+
+      // debug, info, success, warn → stdout
+      expect(logSpy).toHaveBeenCalledTimes(4);
+      // only error → stderr
+      expect(errorSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -168,7 +175,7 @@ describe("Logger", () => {
 
       const expectedPrefix = `\x1b[31m\x1b[1m[ERROR]\x1b[22m\x1b[39m`;
 
-      expect(logSpy).toHaveBeenCalledWith(
+      expect(errorSpy).toHaveBeenCalledWith(
         `${expectedPrefix} \x1b[2m${FIXED_DATE}\x1b[22m`,
         `fail`,
       );
@@ -259,7 +266,7 @@ describe("Logger", () => {
 
       logger.error(err);
 
-      expect(logSpy).toHaveBeenCalledWith(
+      expect(errorSpy).toHaveBeenCalledWith(
         expect.stringContaining("[ERROR]"),
         "Error: boom",
       );
