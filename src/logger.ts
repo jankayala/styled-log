@@ -2,8 +2,12 @@ import {
   styled,
   type StyleName,
   ANSI_CODES,
+  COLOR_CODES,
+  BG_COLOR_CODES,
+  MODIFIER_CODES,
   type StyleOptions,
 } from "@/styled";
+import { inspect } from "node:util";
 
 export enum LogLevel {
   Debug = "debug",
@@ -13,7 +17,7 @@ export enum LogLevel {
   Error = "error",
 }
 
-const levelPriority = {
+const levelPriority: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
   success: 2,
@@ -22,9 +26,43 @@ const levelPriority = {
 };
 
 function format(message: unknown): string {
-  if (typeof message === "object") {
-    return JSON.stringify(message, null, 2);
+  if (message instanceof Error) {
+    return message.stack ?? `${message.name}: ${message.message}`;
   }
+
+  if (typeof message === "bigint") {
+    return `${message}n`;
+  }
+
+  if (typeof message === "object" && message !== null) {
+    try {
+      const seen = new WeakSet<object>();
+      return JSON.stringify(
+        message,
+        (_, value: unknown) => {
+          if (typeof value === "bigint") return `${value}n`;
+          if (value instanceof Error) {
+            return {
+              name: value.name,
+              message: value.message,
+              stack: value.stack,
+            };
+          }
+
+          if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) return "[Circular]";
+            seen.add(value);
+          }
+
+          return value;
+        },
+        2,
+      );
+    } catch {
+      return inspect(message, { depth: 4, colors: false, compact: false });
+    }
+  }
+
   return String(message);
 }
 
@@ -35,6 +73,15 @@ function timestamp(): string {
 export class Logger {
   private currentLevel: LogLevel = LogLevel.Debug;
   private showTime: boolean;
+  private readonly styleOptionKeys = new Set([
+    "color",
+    "bgColor",
+    "rgb",
+    "bgRgb",
+    "hex",
+    "bgHex",
+    "modifiers",
+  ]);
 
   constructor(showTime: boolean = false) {
     this.showTime = showTime;
@@ -52,21 +99,62 @@ export class Logger {
     return levelPriority[level] >= levelPriority[this.currentLevel];
   }
 
-  private isStyleOptions(obj: any): obj is StyleOptions {
+  private isStyleOptionsCandidate(obj: unknown): obj is StyleOptions {
     if (typeof obj !== "object" || obj === null) return false;
     const keys = Object.keys(obj);
     if (keys.length === 0) return false;
-    return keys.every((key) =>
-      [
-        "color",
-        "bgColor",
-        "rgb",
-        "bgRgb",
-        "hex",
-        "bgHex",
-        "modifiers",
-      ].includes(key),
+    return keys.every((key) => this.styleOptionKeys.has(key));
+  }
+
+  private isRgbTriplet(value: unknown): value is [number, number, number] {
+    return (
+      Array.isArray(value) &&
+      value.length === 3 &&
+      value.every((v) => typeof v === "number" && Number.isFinite(v))
     );
+  }
+
+  private validateStyleOptions(options: StyleOptions): void {
+    if (options.color && !(options.color in COLOR_CODES)) {
+      throw new TypeError(`Unknown color: ${String(options.color)}`);
+    }
+
+    if (options.bgColor && !(options.bgColor in BG_COLOR_CODES)) {
+      throw new TypeError(`Unknown background color: ${String(options.bgColor)}`);
+    }
+
+    if (options.rgb && !this.isRgbTriplet(options.rgb)) {
+      throw new TypeError("`rgb` must be a tuple with 3 finite numbers.");
+    }
+
+    if (options.bgRgb && !this.isRgbTriplet(options.bgRgb)) {
+      throw new TypeError("`bgRgb` must be a tuple with 3 finite numbers.");
+    }
+
+    const hexPattern = /^#?[\da-f]{3}([\da-f]{3})?$/i;
+    if (options.hex && !hexPattern.test(options.hex)) {
+      throw new TypeError("`hex` must be a valid 3 or 6 digit hex value.");
+    }
+
+    if (options.bgHex && !hexPattern.test(options.bgHex)) {
+      throw new TypeError("`bgHex` must be a valid 3 or 6 digit hex value.");
+    }
+
+    if (options.modifiers) {
+      const modifiers = Array.isArray(options.modifiers)
+        ? options.modifiers
+        : [options.modifiers];
+
+      if (modifiers.length === 0) {
+        throw new TypeError("`modifiers` must contain at least one modifier.");
+      }
+
+      for (const modifier of modifiers) {
+        if (!(modifier in MODIFIER_CODES)) {
+          throw new TypeError(`Unknown modifier: ${String(modifier)}`);
+        }
+      }
+    }
   }
 
   private levelColors: Record<LogLevel, StyleName> = {
@@ -94,22 +182,24 @@ export class Logger {
 
   log(...args: unknown[]) {
     const hasOptions =
-      args.length > 1 && this.isStyleOptions(args[args.length - 1]);
+      args.length > 1 && this.isStyleOptionsCandidate(args[args.length - 1]);
     if (hasOptions) {
       const options = args.pop() as StyleOptions;
+      this.validateStyleOptions(options);
+
       let s = styled;
-      if (options.color) s = (s as any)[options.color];
-      if (options.bgColor) s = (s as any)[options.bgColor];
-      if (options.rgb) s = (s as any).rgb(...options.rgb);
-      if (options.bgRgb) s = (s as any).bgRgb(...options.bgRgb);
-      if (options.hex) s = (s as any).hex(options.hex);
-      if (options.bgHex) s = (s as any).bgHex(options.bgHex);
+      if (options.color) s = s[options.color];
+      if (options.bgColor) s = s[options.bgColor];
+      if (options.rgb) s = s.rgb(...options.rgb);
+      if (options.bgRgb) s = s.bgRgb(...options.bgRgb);
+      if (options.hex) s = s.hex(options.hex);
+      if (options.bgHex) s = s.bgHex(options.bgHex);
       if (options.modifiers) {
         const mods = Array.isArray(options.modifiers)
           ? options.modifiers
           : [options.modifiers];
         for (const mod of mods) {
-          s = (s as any)[mod];
+          s = s[mod];
         }
       }
       console.log(s(args.map(format).join(" ")));
